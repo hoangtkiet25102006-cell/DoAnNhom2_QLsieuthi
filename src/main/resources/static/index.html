@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý siêu thị</title>
+    <link rel="stylesheet" href="css/app.css">
+    <script src="js/app.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/">Siêu thị <span>Quản lý bán hàng</span></a>
+        <nav aria-label="Điều hướng chính">
+            <button class="nav-button active" data-view="tong-quan">Tổng quan</button>
+            <button class="nav-button" data-view="ban-hang">Thanh toán</button>
+            <button class="nav-button" data-view="nhap-kho">Phiếu nhập kho</button>
+            <button class="nav-button" data-view="mat-hang">Mặt hàng</button>
+            <button class="nav-button" data-view="kho">Tình trạng kho</button>
+            <button class="nav-button" data-view="khach-hang">Khách hàng VIP</button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="view active" id="view-tong-quan">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">BẢNG ĐIỀU KHIỂN</p>
+                    <h1>Tổng quan cửa hàng</h1>
+                    <p class="muted">Các số liệu được tải trực tiếp từ cơ sở dữ liệu.</p>
+                </div>
+                <button class="button secondary" id="taiLaiTongQuan">Tải lại</button>
+            </div>
+
+            <div class="stats-grid">
+                <article class="card"><span>Doanh thu hôm nay</span><strong id="doanhThuHomNay">—</strong></article>
+                <article class="card"><span>Tiền nhập hàng hôm nay</span><strong id="chiPhiNhapHomNay">—</strong></article>
+                <article class="card net-card"><span>Thu - chi ròng hôm nay</span><strong id="thuChiRongHomNay">—</strong></article>
+                <article class="card"><span>Đơn bán hôm nay</span><strong id="soDonHomNay">—</strong></article>
+                <article class="card"><span>Mặt hàng đang bán</span><strong id="tongMatHang">—</strong></article>
+                <article class="card warning-card"><span>Mặt hàng sắp hết / hết</span><strong id="matHangSapHet">—</strong></article>
+            </div>
+
+            <div class="two-columns section-gap">
+                <article class="panel">
+                    <div class="panel-heading">
+                        <h2>Thu - chi</h2>
+                        <div class="chart-legend"><span><i class="legend-income"></i>Thu</span><span><i class="legend-expense"></i>Chi</span></div>
+                    </div>
+                    <form id="formBaoCaoThuChi" class="report-filters">
+                        <label>Thống kê theo
+                            <select id="loaiBaoCao">
+                                <option value="ngay">Theo tuần · 7 ngày</option>
+                                <option value="thang">Theo tháng · 12 tháng</option>
+                                <option value="nam">Theo năm · 5 năm</option>
+                            </select>
+                        </label>
+                        <label id="nhomKyNgay">Chọn ngày
+                            <input id="kyBaoCaoNgay" type="date" required>
+                        </label>
+                        <label id="nhomKyThang" hidden>Chọn năm
+                            <input id="kyBaoCaoThang" type="number" min="1" max="9998" step="1" required>
+                        </label>
+                        <label id="nhomKyNam" hidden>Năm kết thúc
+                            <input id="kyBaoCaoNam" type="number" min="5" max="9998" step="1" required>
+                        </label>
+                        <button class="button secondary" type="submit">Xem</button>
+                    </form>
+                    <p id="kyBaoCaoHienThi" class="muted report-period"></p>
+                    <div class="report-summary">
+                        <div><span>Tổng thu</span><strong id="baoCaoTongThu">—</strong></div>
+                        <div><span>Tổng chi nhập hàng</span><strong id="baoCaoTongChi">—</strong></div>
+                        <div><span>Thu - chi ròng</span><strong id="baoCaoThuChiRong">—</strong></div>
+                    </div>
+                    <p id="thongBaoBaoCaoThuChi" class="form-message" role="status">Đang tải báo cáo...</p>
+                    <div id="bieuDoDoanhThu" class="chart report-chart" role="img" aria-label="Biểu đồ thu chi theo kỳ"></div>
+                </article>
+                <article class="panel">
+                    <div class="panel-heading">
+                        <h2>Mặt hàng cần chú ý</h2>
+                        <button class="text-button" data-open="kho">Xem tồn kho</button>
+                    </div>
+                    <div id="danhSachSapHet" class="simple-list"><p class="muted">Đang tải...</p></div>
+                </article>
+            </div>
+
+            <article class="panel section-gap">
+                <div class="panel-heading"><h2>Đơn hàng gần đây</h2></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Thời gian</th><th>Thanh toán</th><th>Tổng tiền</th><th></th></tr></thead>
+                        <tbody id="donHangGanDay"></tbody>
+                    </table>
+                    <p id="thongBaoDonGanDay" class="empty-message"></p>
+                </div>
+            </article>
+            <article class="panel section-gap">
+                <div class="panel-heading"><h2>Phiếu nhập gần đây</h2></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Mã phiếu</th><th>Nhà cung cấp</th><th>Thời gian</th><th>Tiền chi</th><th></th></tr></thead>
+                        <tbody id="phieuNhapGanDay"></tbody>
+                    </table>
+                    <p id="thongBaoPhieuNhapGanDay" class="empty-message"></p>
+                </div>
+            </article>
+        </section>
+
+        <section class="view" id="view-nhap-kho">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">QUẢN LÝ KHO</p>
+                    <h1>Lập phiếu nhập kho</h1>
+                    <p class="muted">Lưu phiếu nhập sẽ tăng tồn kho và ghi tiền nhập thành khoản chi.</p>
+                </div>
+            </div>
+            <div class="two-columns checkout-layout">
+                <article class="panel">
+                    <h2>Thông tin phiếu</h2>
+                    <div class="checkout-fields">
+                        <label>Nhà cung cấp <input id="nhaCungCap" maxlength="150" required placeholder="Tên nhà cung cấp"></label>
+                        <label>Ghi chú <textarea id="ghiChuNhap" rows="3" maxlength="2000" placeholder="Ghi chú thêm (không bắt buộc)"></textarea></label>
+                    </div>
+                    <div class="inline-filters receipt-add-row">
+                        <input id="tuKhoaNhapKho" type="search" placeholder="Tìm mặt hàng theo tên hoặc mã">
+                        <select id="chonMatHangNhap"><option value="">Chọn mặt hàng</option></select>
+                        <input id="soLuongNhap" type="number" min="1" step="1" value="1" required aria-label="Số lượng nhập">
+                        <input id="giaNhapDonVi" type="number" min="0" step="1" required placeholder="Giá nhập / đơn vị" aria-label="Giá nhập mỗi đơn vị">
+                        <button class="button secondary" id="themDongNhap" type="button">Thêm</button>
+                    </div>
+                    <p class="muted">Giá nhập phải được nhập rõ ràng; giá 0 chỉ hợp lệ khi bạn chủ động nhập số 0.</p>
+                    <p id="thongBaoNhapKho" class="form-message" role="status"></p>
+                </article>
+                <article class="panel">
+                    <h2>Mặt hàng trong phiếu</h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Mặt hàng</th><th>Số lượng</th><th>Giá nhập</th><th>Thành tiền</th><th></th></tr></thead>
+                            <tbody id="dongPhieuNhap"></tbody>
+                        </table>
+                    </div>
+                    <p id="phieuNhapTrong" class="empty-message">Chưa có mặt hàng trong phiếu.</p>
+                    <div class="totals">
+                        <p><span>Tổng tiền chi</span><strong id="tongTienNhap">0 đ</strong></p>
+                    </div>
+                    <button class="button full-width" id="luuPhieuNhap" type="button">Lưu phiếu nhập</button>
+                </article>
+            </div>
+        </section>
+
+        <section class="view" id="view-ban-hang">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">QUẦY THU NGÂN</p>
+                    <h1>Tạo đơn và thanh toán</h1>
+                    <p class="muted">Chọn mặt hàng còn tồn, kiểm tra số lượng rồi xác nhận thanh toán.</p>
+                </div>
+            </div>
+            <div class="two-columns checkout-layout">
+                <article class="panel">
+                    <h2>Chọn mặt hàng</h2>
+                    <div class="inline-filters">
+                        <input id="tuKhoaBanHang" type="search" placeholder="Tên hoặc mã sản phẩm">
+                        <select id="locDanhMucBanHang"><option value="">Tất cả danh mục</option></select>
+                    </div>
+                    <div id="sanPhamBanHang" class="product-list"><p class="muted">Đang tải mặt hàng...</p></div>
+                </article>
+
+                <article class="panel">
+                    <h2>Đơn hàng hiện tại</h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Mặt hàng</th><th>SL</th><th>Thành tiền</th><th></th></tr></thead>
+                            <tbody id="gioHang"></tbody>
+                        </table>
+                    </div>
+                    <p id="gioHangTrong" class="empty-message">Chưa có mặt hàng trong đơn.</p>
+                    <div class="checkout-fields">
+                        <label>Tên khách hàng <input id="tenKhachHang" maxlength="150" placeholder="Khách lẻ"></label>
+                        <label>Số điện thoại thành viên <input id="soDienThoaiThanhVien" type="tel" list="danhSachSoDienThoai" maxlength="30" placeholder="Nhập số điện thoại để kiểm tra VIP"></label>
+                        <datalist id="danhSachSoDienThoai"></datalist>
+                        <p id="thongTinThanhVien" class="form-message" role="status">Nhập số điện thoại đã đăng ký để kiểm tra thẻ VIP.</p>
+                        <label>Giảm giá thêm (đồng) <input id="giamGia" type="number" min="0" step="1" value="0"></label>
+                        <label>Phương thức thanh toán
+                            <select id="phuongThucThanhToan">
+                                <option value="tien-mat">Tiền mặt</option>
+                                <option value="the">Thẻ</option>
+                                <option value="chuyen-khoan">Chuyển khoản</option>
+                            </select>
+                        </label>
+                        <label>Tiền khách đưa (đồng) <input id="tienKhachDua" type="number" min="0" step="1" value="0"></label>
+                    </div>
+                    <div class="totals">
+                        <p><span>Tiền hàng</span><strong id="tienHang">0 đ</strong></p>
+                        <p><span>Giảm giá VIP</span><strong id="tienGiamVip">0 đ</strong></p>
+                        <p><span>Giảm giá thêm được áp dụng</span><strong id="tienGiamThuCong">0 đ</strong></p>
+                        <p><span>Khách cần trả</span><strong id="tongTien">0 đ</strong></p>
+                        <p><span>Tiền thừa / còn thiếu</span><strong id="tienThua">0 đ</strong></p>
+                    </div>
+                    <p id="thongBaoThanhToan" class="form-message" role="status"></p>
+                    <button class="button full-width" id="xacNhanThanhToan">Hoàn tất thanh toán</button>
+                </article>
+            </div>
+        </section>
+
+        <section class="view" id="view-khach-hang">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">CHĂM SÓC KHÁCH HÀNG</p>
+                    <h1>Quản lý khách hàng VIP</h1>
+                    <p class="muted">Khách hàng được nối với từng thẻ VIP bằng mã khách hàng.</p>
+                </div>
+            </div>
+            <div class="two-columns checkout-layout">
+                <article class="panel">
+                    <h2>Đăng ký khách hàng</h2>
+                    <form id="formKhachHang" class="checkout-fields">
+                        <input id="maKhachHangForm" type="hidden">
+                        <label>Họ tên <input id="tenKhachHangMoi" maxlength="150" required></label>
+                        <label>Số điện thoại <input id="soDienThoaiMoi" type="tel" maxlength="15" required></label>
+                        <div class="form-actions">
+                            <button class="button" id="nutLuuKhachHang" type="submit">Lưu khách hàng</button>
+                            <button class="button secondary" id="huySuaKhachHang" type="button" hidden>Hủy sửa</button>
+                        </div>
+                    </form>
+                    <p id="thongBaoKhachHang" class="form-message" role="status"></p>
+                </article>
+                <article class="panel">
+                    <h2>Mức giảm cho thẻ mới</h2>
+                    <form id="formCauHinhVip" class="checkout-fields">
+                        <label>Tỷ lệ giảm (%) <input id="tyLeGiamVip" type="number" min="0" max="100" step="1" required></label>
+                        <p class="muted">Mức này áp dụng khi cấp thẻ mới. Thẻ đã cấp giữ tỷ lệ riêng trong dữ liệu thẻ.</p>
+                        <button class="button" type="submit">Lưu cấu hình</button>
+                    </form>
+                    <p id="thongBaoCauHinhVip" class="form-message" role="status"></p>
+                </article>
+            </div>
+            <article class="panel section-gap">
+                <h2>Cấp thẻ VIP</h2>
+                <form id="formCapTheVip" class="checkout-fields">
+                    <label>Khách hàng
+                        <select id="khachHangCapTheVip" required></select>
+                    </label>
+                    <label>Số lượt tối đa
+                        <input id="soLanToiDaVip" type="number" min="1" step="1" required>
+                    </label>
+                    <button class="button" type="submit">Cấp thẻ</button>
+                </form>
+                <p id="thongBaoCapTheVip" class="form-message" role="status"></p>
+            </article>
+            <article class="panel section-gap">
+                <div class="panel-heading"><h2>Danh sách khách hàng</h2></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Họ tên</th><th>Số điện thoại</th><th>Thẻ VIP</th><th>Thao tác</th></tr></thead>
+                        <tbody id="bangKhachHang"></tbody>
+                    </table>
+                </div>
+                <p id="khachHangTrong" class="empty-message">Chưa có khách hàng đăng ký.</p>
+            </article>
+        </section>
+
+        <section class="view" id="view-mat-hang">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">DANH MỤC</p>
+                    <h1>Quản lý mặt hàng</h1>
+                    <p class="muted">Tìm kiếm, lọc và thêm sản phẩm vào danh mục.</p>
+                </div>
+                <button class="button" id="moFormMatHang">+ Thêm mặt hàng</button>
+            </div>
+            <article class="panel">
+                <div class="filters">
+                    <input id="tuKhoaMatHang" type="search" placeholder="Tìm theo mã hoặc tên">
+                    <select id="locDanhMucMatHang"><option value="">Tất cả danh mục</option></select>
+                    <select id="locTinhTrangMatHang">
+                        <option value="">Tất cả tình trạng</option>
+                        <option value="con-hang">Còn hàng</option>
+                        <option value="sap-het">Sắp hết</option>
+                        <option value="het-hang">Hết hàng</option>
+                    </select>
+                    <button class="button secondary" id="taiLaiMatHang">Làm mới</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Mã</th><th>Tên mặt hàng</th><th>Danh mục</th><th>Đơn giá</th><th>Tồn kho</th><th>Tồn tối thiểu</th><th>Trạng thái</th></tr>
+                        </thead>
+                        <tbody id="bangMatHang"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <p id="thongBaoMatHang" class="empty-message"></p>
+                    <div class="pagination">
+                        <button class="button secondary" id="trangTruoc">Trước</button>
+                        <span id="thongTinTrang">Trang 1</span>
+                        <button class="button secondary" id="trangSau">Sau</button>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="view" id="view-kho">
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">THEO DÕI TỒN KHO</p>
+                    <h1>Tình trạng kho</h1>
+                    <p class="muted">Tồn kho được cập nhật sau mỗi lần thanh toán.</p>
+                </div>
+                <button class="button secondary" id="xuatBaoCao">Xuất báo cáo CSV</button>
+            </div>
+            <div class="stats-grid stock-summary">
+                <article class="card"><span>Tổng mặt hàng</span><strong id="tongMatHangKho">—</strong></article>
+                <article class="card warning-card"><span>Sắp hết hoặc hết</span><strong id="matHangSapHetKho">—</strong></article>
+                <article class="card"><span>Giá trị tồn kho (theo giá nhập)</span><strong id="giaTriTonKho">—</strong></article>
+            </div>
+            <article class="panel">
+                <div class="filters">
+                    <input id="tuKhoaKho" type="search" placeholder="Tìm theo mã hoặc tên">
+                    <select id="locDanhMucKho"><option value="">Tất cả danh mục</option></select>
+                    <select id="locTinhTrangKho">
+                        <option value="">Tất cả tình trạng</option>
+                        <option value="con-hang">Còn hàng</option>
+                        <option value="sap-het">Sắp hết</option>
+                        <option value="het-hang">Hết hàng</option>
+                    </select>
+                    <button class="button secondary" id="taiLaiKho">Làm mới</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Mã</th><th>Mặt hàng</th><th>Danh mục</th><th>Tồn hiện tại</th><th>Mức tối thiểu</th><th>Mức tồn</th><th>Trạng thái</th></tr></thead>
+                        <tbody id="bangTonKho"></tbody>
+                    </table>
+                </div>
+                <p id="thongBaoKho" class="empty-message"></p>
+            </article>
+        </section>
+    </main>
+
+    <dialog id="hopThoaiMatHang">
+        <form id="formMatHang" class="dialog-content">
+            <div class="panel-heading">
+                <div><p class="eyebrow">SẢN PHẨM MỚI</p><h2>Thêm mặt hàng</h2></div>
+                <button class="icon-button" id="dongFormMatHang" type="button" aria-label="Đóng">×</button>
+            </div>
+            <div class="form-grid">
+                <label>Mã sản phẩm <input name="maSanPham" maxlength="40" required></label>
+                <label>Mã vạch (nếu có) <input name="maVach" maxlength="80"></label>
+                <label>Tên mặt hàng <input name="tenHang" maxlength="150" required></label>
+                <label>Danh mục
+                    <select name="danhMuc" required><option value="">Chọn danh mục</option></select>
+                </label>
+                <label>Đơn vị tính
+                    <select name="donViTinh" required>
+                        <option value="">Chọn đơn vị</option><option>cái</option><option>chai</option>
+                        <option>hộp</option><option>gói</option><option>kg</option><option>lít</option>
+                    </select>
+                </label>
+                <label>Thương hiệu <input name="thuongHieu" maxlength="100" required></label>
+                <label>Giá nhập (đồng) <input name="giaNhap" type="number" min="0" step="1" required></label>
+                <label>Giá bán (đồng) <input name="donGia" type="number" min="1" step="1" required></label>
+                <label>Tồn ban đầu <input name="tonKho" type="number" min="0" step="1" value="0" required></label>
+                <label>Tồn tối thiểu <input name="tonToiThieu" type="number" min="0" step="1" value="5" required></label>
+                <label class="wide-field">Mô tả <textarea name="moTa" rows="3" required></textarea></label>
+            </div>
+            <p id="thongBaoFormMatHang" class="form-message" role="status"></p>
+            <div class="dialog-actions">
+                <button class="button secondary" id="huyFormMatHang" type="button">Hủy</button>
+                <button class="button" type="submit">Lưu mặt hàng</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="hopThoaiHoaDon">
+        <div class="dialog-content">
+            <p class="eyebrow">THANH TOÁN THÀNH CÔNG</p>
+            <h2>Đã lưu đơn hàng</h2>
+            <div id="noiDungHoaDon"></div>
+            <form method="dialog" class="dialog-actions"><button class="button">Đóng</button></form>
+        </div>
+    </dialog>
+
+    <dialog id="hopThoaiChiTietGiaoDich" class="transaction-dialog">
+        <div class="dialog-content transaction-dialog-content">
+            <header class="transaction-dialog-header">
+                <div>
+                    <p class="eyebrow" id="loaiChiTietGiaoDich"></p>
+                    <h2 id="tieuDeChiTietGiaoDich">Chi tiết giao dịch</h2>
+                    <p id="ngayChiTietGiaoDich" class="muted"></p>
+                </div>
+                <form method="dialog"><button class="icon-button" aria-label="Đóng chi tiết">×</button></form>
+            </header>
+            <div id="noiDungChiTietGiaoDich"></div>
+            <p id="thongBaoChiTietGiaoDich" class="form-message" role="status"></p>
+            <footer class="dialog-actions transaction-dialog-footer">
+                <form method="dialog"><button class="button secondary">Đóng</button></form>
+            </footer>
+        </div>
+    </dialog>
+</body>
+</html>

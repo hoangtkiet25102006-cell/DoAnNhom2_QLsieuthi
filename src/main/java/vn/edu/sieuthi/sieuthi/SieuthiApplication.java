@@ -1,0 +1,13 @@
+package vn.edu.sieuthi.sieuthi;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SieuthiApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SieuthiApplication.class, args);
+	}
+
+}
