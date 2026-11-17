@@ -61,8 +61,8 @@ public class HoanTienService {
 
         String tenKhach = (String) donHang.get("ten_khach_hang");
         Integer maPhieuChi = jdbc.queryForObject("""
-            INSERT INTO phieu_chi (ma_don_hang, so_phieu, ly_do, ho_ten_khach, so_tien)
-            VALUES (?, LPAD(nextval('phieu_chi_so_phieu_seq')::text, 10, '0'), ?, ?, ?)
+            INSERT INTO phieu_chi (ma_don_hang, ngay_chi, ly_do, ho_ten_khach, so_tien)
+            VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?)
             RETURNING ma_phieu_chi
             """,
             Integer.class,

@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý siêu thị</title>
     <link rel="stylesheet" href="css/app.css">
-    <script src="js/app.js" defer></script>
+    <script src="/js/app.js?v=role-logout-fix" defer></script>
 </head>
-<body>
+<body class="auth-loading">
     <header class="topbar">
         <a class="brand" href="/">Siêu thị <span>Quản lý bán hàng</span></a>
         <nav aria-label="Điều hướng chính">
-            <button class="nav-button active" data-view="tong-quan">Tổng quan</button>
+            <button class="nav-button active" data-view="tong-quan" data-manager-only>Tổng quan</button>
             <button class="nav-button" data-view="ban-hang">Thanh toán</button>
             <button class="nav-button" data-view="nhap-kho">Phiếu nhập kho</button>
-            <button class="nav-button" data-view="mat-hang">Mặt hàng</button>
-            <button class="nav-button" data-view="kho">Tình trạng kho</button>
+            <button class="nav-button" data-view="mat-hang" data-manager-only>Mặt hàng</button>
+            <button class="nav-button" data-view="kho" data-manager-only>Tình trạng kho</button>
             <button class="nav-button" data-view="khach-hang">Khách hàng VIP</button>
         </nav>
+        <div class="account-bar">
+            <span id="taiKhoanHienTai"></span>
+            <form id="formDangXuat" action="/logout" method="post">
+                <input id="tokenDangXuat" name="_csrf" type="hidden">
+                <button class="button secondary" id="dangXuat" type="submit">Đăng xuất</button>
+            </form>
+        </div>
     </header>
 
     <main>
-        <section class="view active" id="view-tong-quan">
+        <section class="view active" id="view-tong-quan" data-manager-only>
             <div class="page-heading">
                 <div>
                     <p class="eyebrow">BẢNG ĐIỀU KHIỂN</p>
@@ -224,7 +231,7 @@
                     </form>
                     <p id="thongBaoKhachHang" class="form-message" role="status"></p>
                 </article>
-                <article class="panel">
+                <article class="panel" data-manager-only>
                     <h2>Mức giảm cho thẻ mới</h2>
                     <form id="formCauHinhVip" class="checkout-fields">
                         <label>Tỷ lệ giảm (%) <input id="tyLeGiamVip" type="number" min="0" max="100" step="1" required></label>
@@ -247,7 +254,7 @@
                 </form>
                 <p id="thongBaoCapTheVip" class="form-message" role="status"></p>
             </article>
-            <article class="panel section-gap">
+            <article class="panel section-gap" data-manager-only>
                 <div class="panel-heading"><h2>Danh sách khách hàng</h2></div>
                 <div class="table-wrap">
                     <table>
@@ -257,9 +264,25 @@
                 </div>
                 <p id="khachHangTrong" class="empty-message">Chưa có khách hàng đăng ký.</p>
             </article>
+            <article class="panel section-gap" data-manager-only>
+                <h2>Tạo tài khoản</h2>
+                <form id="formTaiKhoan" class="checkout-fields">
+                    <label>Họ tên <input id="hoTenTaiKhoan" maxlength="150" required></label>
+                    <label>Tên đăng nhập <input id="tenDangNhapTaiKhoan" minlength="3" maxlength="60" pattern="[A-Za-z0-9._-]+" required></label>
+                    <label>Mật khẩu (ít nhất 8 ký tự) <input id="matKhauTaiKhoan" type="password" minlength="8" maxlength="72" required></label>
+                    <label>Vai trò
+                        <select id="vaiTroTaiKhoan" required>
+                            <option value="EMPLOYEE">Nhân viên</option>
+                            <option value="MANAGER">Quản lý</option>
+                        </select>
+                    </label>
+                    <button class="button" type="submit">Tạo tài khoản</button>
+                </form>
+                <p id="thongBaoTaiKhoan" class="form-message" role="status"></p>
+            </article>
         </section>
 
-        <section class="view" id="view-mat-hang">
+        <section class="view" id="view-mat-hang" data-manager-only>
             <div class="page-heading">
                 <div>
                     <p class="eyebrow">DANH MỤC</p>

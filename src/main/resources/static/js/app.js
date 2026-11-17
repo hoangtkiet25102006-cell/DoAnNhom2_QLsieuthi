@@ -8,7 +8,8 @@ const state = {
     khachHang: [],
     tyLeGiamVip: 10,
     hoaDonHienTai: null,
-    giaoDichHienTai: null
+    giaoDichHienTai: null,
+    taiKhoan: null
 };
 
 const dinhDangTien = soTien => `${Number(soTien).toLocaleString('vi-VN')} đ`;
@@ -23,9 +24,20 @@ async function goiApi(url, tuyChon = {}) {
     if (location.protocol === 'file:') {
         throw new Error('Bạn đang mở file HTML trực tiếp nên ứng dụng không thể lưu dữ liệu. Hãy chạy ./mvnw spring-boot:run rồi mở http://localhost:8080.');
     }
+    const tuyChonApi = { ...tuyChon };
+    const phuongThuc = (tuyChonApi.method || 'GET').toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(phuongThuc)) {
+        const token = document.cookie.split('; ')
+            .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+            ?.slice('XSRF-TOKEN='.length);
+        tuyChonApi.headers = {
+            ...tuyChonApi.headers,
+            ...(token ? { 'X-XSRF-TOKEN': decodeURIComponent(token) } : {})
+        };
+    }
     let phanHoi;
     try {
-        phanHoi = await fetch(url, tuyChon);
+        phanHoi = await fetch(url, tuyChonApi);
     } catch (loi) {
         throw new Error('Không kết nối được máy chủ. Hãy chạy ứng dụng Spring Boot và mở trang tại http://localhost:8080.');
     }
@@ -35,8 +47,11 @@ async function goiApi(url, tuyChon = {}) {
         if (phanHoi.status === 404 && !laJson) {
             throw new Error('Không tìm thấy API. Hãy chạy ứng dụng bằng ./mvnw spring-boot:run và mở http://localhost:8080, không mở file HTML hoặc máy chủ tĩnh.');
         }
-        throw new Error(noiDung?.detail || noiDung?.message || noiDung?.error || `Lỗi máy chủ (${phanHoi.status}).`);
+        const loiApi = new Error(noiDung?.detail || noiDung?.message || noiDung?.error || `Lỗi máy chủ (${phanHoi.status}).`);
+        loiApi.status = phanHoi.status;
+        throw loiApi;
     }
+    if (phanHoi.status === 204) return null;
     return phanHoi.json();
 }
 
@@ -55,6 +70,10 @@ function taoTheTrangThai(matHang) {
 }
 
 function chuyenManHinh(tenManHinh) {
+    if (!state.taiKhoan) return;
+    if (state.taiKhoan.vaiTro !== 'MANAGER' && ['tong-quan', 'mat-hang', 'kho'].includes(tenManHinh)) {
+        tenManHinh = 'ban-hang';
+    }
     document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === `view-${tenManHinh}`));
     document.querySelectorAll('.nav-button').forEach(button => button.classList.toggle('active', button.dataset.view === tenManHinh));
     if (tenManHinh === 'tong-quan') taiTongQuan();
@@ -62,7 +81,37 @@ function chuyenManHinh(tenManHinh) {
     if (tenManHinh === 'nhap-kho') taiMatHangNhapKho();
     if (tenManHinh === 'mat-hang') taiDanhSachMatHang();
     if (tenManHinh === 'kho') taiTonKho();
-    if (tenManHinh === 'khach-hang') Promise.all([taiKhachHang(), taiCauHinhVip()]);
+    if (tenManHinh === 'khach-hang') {
+        taiKhachHang();
+        if (state.taiKhoan.vaiTro === 'MANAGER') taiCauHinhVip();
+    }
+}
+
+function apDungQuyen(taiKhoan) {
+    state.taiKhoan = taiKhoan;
+    const laQuanLy = taiKhoan.vaiTro === 'MANAGER';
+    document.querySelectorAll('[data-manager-only]').forEach(phanTu => {
+        phanTu.hidden = !laQuanLy;
+        phanTu.setAttribute('aria-hidden', String(!laQuanLy));
+    });
+    document.getElementById('taiKhoanHienTai').textContent =
+        `${taiKhoan.hoTen} · ${laQuanLy ? 'Quản lý' : 'Nhân viên'}`;
+    document.querySelector('.account-bar').hidden = false;
+    document.body.classList.remove('auth-loading');
+    chuyenManHinh(laQuanLy ? 'tong-quan' : 'ban-hang');
+}
+
+async function dangXuat() {
+    try {
+        const { token } = await goiApi('/api/auth/csrf');
+        document.getElementById('tokenDangXuat').value = token;
+    } catch (loi) {
+        const thongBao = document.getElementById('thongBaoThanhToan');
+        thongBao.textContent = `Không đăng xuất được: ${loi.message}`;
+        thongBao.className = 'form-message error';
+        return;
+    }
+    document.getElementById('dangXuat').disabled = true;
 }
 
 function taoThamSoLoc(tuKhoaId, danhMucId, tinhTrangId) {
@@ -1160,8 +1209,9 @@ async function luuPhieuChi(suKien) {
     const donHang = state.hoaDonHienTai;
     thongBao.className = 'form-message';
     thongBao.textContent = 'Đang lưu phiếu chi...';
+    let phieuChi;
     try {
-        const phieuChi = await goiApi('/api/phieu-chi', {
+        phieuChi = await goiApi('/api/phieu-chi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1170,7 +1220,14 @@ async function luuPhieuChi(suKien) {
                 lyDo: document.getElementById('lyDoHoanTien').value.trim()
             })
         });
-        document.getElementById('hopThoaiPhieuChi').close();
+    } catch (loi) {
+        thongBao.className = 'form-message error';
+        thongBao.textContent = `Không lưu được phiếu chi: ${loi.message}`;
+        return;
+    }
+
+    document.getElementById('hopThoaiPhieuChi').close();
+    try {
         chuanBiPhieuIn('PHIẾU CHI HOÀN TIỀN', [
             ['Mã phiếu chi', `#${phieuChi.maPhieuChi}`],
             ['Mã đơn hàng', `#${phieuChi.maDonHang}`],
@@ -1179,10 +1236,42 @@ async function luuPhieuChi(suKien) {
             ['Lý do', phieuChi.lyDo]
         ], [], [['Số tiền hoàn', dinhDangTien(phieuChi.soTien)]]);
         window.print();
-        await Promise.all([taiTongQuan(), taiBaoCaoThuChi()]);
+    } catch (loi) {
+        const thongBaoThanhToan = document.getElementById('thongBaoThanhToan');
+        thongBaoThanhToan.className = 'form-message error';
+        thongBaoThanhToan.textContent =
+            `Đã lưu phiếu chi #${phieuChi.maPhieuChi} nhưng không tạo được bản in: ${loi.message}`;
+        return;
+    }
+    const thongBaoThanhToan = document.getElementById('thongBaoThanhToan');
+    thongBaoThanhToan.className = 'form-message success';
+    thongBaoThanhToan.textContent =
+        `Đã lưu phiếu chi #${phieuChi.maPhieuChi}. Nếu hộp thoại in không tự mở, hãy thử in lại bằng Ctrl+P.`;
+    await Promise.all([taiTongQuan(), taiBaoCaoThuChi()]);
+}
+
+async function taoTaiKhoan(suKien) {
+    suKien.preventDefault();
+    const thongBao = document.getElementById('thongBaoTaiKhoan');
+    thongBao.className = 'form-message';
+    thongBao.textContent = 'Đang tạo tài khoản...';
+    try {
+        const ketQua = await goiApi('/api/auth/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                hoTen: document.getElementById('hoTenTaiKhoan').value.trim(),
+                tenDangNhap: document.getElementById('tenDangNhapTaiKhoan').value.trim(),
+                matKhau: document.getElementById('matKhauTaiKhoan').value,
+                vaiTro: document.getElementById('vaiTroTaiKhoan').value
+            })
+        });
+        document.getElementById('formTaiKhoan').reset();
+        thongBao.className = 'form-message success';
+        thongBao.textContent = ketQua.message;
     } catch (loi) {
         thongBao.className = 'form-message error';
-        thongBao.textContent = `Không lưu được phiếu chi: ${loi.message}`;
+        thongBao.textContent = `Không tạo được tài khoản: ${loi.message}`;
     }
 }
 
@@ -1274,6 +1363,13 @@ document.getElementById('themDongNhap').addEventListener('click', themDongVaoPhi
 document.getElementById('luuPhieuNhap').addEventListener('click', luuPhieuNhap);
 document.getElementById('formMatHang').addEventListener('submit', luuMatHang);
 document.getElementById('formKhachHang').addEventListener('submit', luuKhachHang);
+document.getElementById('formTaiKhoan').addEventListener('submit', taoTaiKhoan);
+document.getElementById('formDangXuat').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await dangXuat();
+    if (document.getElementById('tokenDangXuat').value) form.submit();
+});
 document.getElementById('formCapTheVip').addEventListener('submit', capTheVip);
 document.getElementById('formCauHinhVip').addEventListener('submit', luuCauHinhVip);
 document.getElementById('huySuaKhachHang').addEventListener('click', ketThucSuaKhachHang);
@@ -1314,7 +1410,24 @@ document.getElementById('kyBaoCaoThang').value = ngayHienTai.getFullYear();
 document.getElementById('kyBaoCaoNam').value = ngayHienTai.getFullYear();
 capNhatTruongKyBaoCao();
 
-// Khởi tạo danh mục, trang tổng quan và báo cáo cho kỳ hiện tại.
-Promise.all([taiDanhMuc(), taiTongQuan(), taiBaoCaoThuChi(), taiKhachHang(), taiCauHinhVip()]).catch(loi => {
-    document.getElementById('danhSachSapHet').textContent = `Không tải được danh mục: ${loi.message}`;
-});
+async function khoiTaoUngDung() {
+    try {
+        const taiKhoan = await goiApi('/api/auth/me');
+        await goiApi('/api/auth/csrf');
+        apDungQuyen(taiKhoan);
+        const laQuanLy = taiKhoan.vaiTro === 'MANAGER';
+        const viecCanTai = [taiDanhMuc(), taiKhachHang()];
+        if (laQuanLy) viecCanTai.push(taiBaoCaoThuChi(), taiCauHinhVip());
+        await Promise.all(viecCanTai);
+    } catch (loi) {
+        if (loi.status === 401) {
+            window.location.replace('/login.html');
+            return;
+        }
+        document.body.classList.remove('auth-loading');
+        document.getElementById('thongBaoThanhToan').textContent =
+            `Không khởi tạo được giao diện: ${loi.message}`;
+    }
+}
+
+khoiTaoUngDung();
