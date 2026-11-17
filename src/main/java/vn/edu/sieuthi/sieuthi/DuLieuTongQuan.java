@@ -15,7 +15,7 @@ public record DuLieuTongQuan(
     List<PhieuNhapGanDay> phieuNhapGanDay,
     List<DonHangGanDay> donHangGanDay
 ) {
-    public record ThuChiTheoNgay(LocalDate ngay, long doanhThu, long chiPhiNhap) {
+    public record ThuChiTheoNgay(LocalDate ngay, long doanhThu, long chiPhiNhap, long chiHoanTien) {
     }
 
     public record PhieuNhapGanDay(

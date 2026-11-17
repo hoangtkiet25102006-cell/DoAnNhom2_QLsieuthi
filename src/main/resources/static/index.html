@@ -68,7 +68,7 @@
                     <p id="kyBaoCaoHienThi" class="muted report-period"></p>
                     <div class="report-summary">
                         <div><span>Tổng thu</span><strong id="baoCaoTongThu">—</strong></div>
-                        <div><span>Tổng chi nhập hàng</span><strong id="baoCaoTongChi">—</strong></div>
+                        <div><span>Tổng chi</span><strong id="baoCaoTongChi">—</strong></div>
                         <div><span>Thu - chi ròng</span><strong id="baoCaoThuChiRong">—</strong></div>
                     </div>
                     <p id="thongBaoBaoCaoThuChi" class="form-message" role="status">Đang tải báo cáo...</p>
@@ -336,6 +336,8 @@
         </section>
     </main>
 
+    <section id="printArea" class="print-area" aria-hidden="true"></section>
+
     <dialog id="hopThoaiMatHang">
         <form id="formMatHang" class="dialog-content">
             <div class="panel-heading">
@@ -375,8 +377,36 @@
             <p class="eyebrow">THANH TOÁN THÀNH CÔNG</p>
             <h2>Đã lưu đơn hàng</h2>
             <div id="noiDungHoaDon"></div>
-            <form method="dialog" class="dialog-actions"><button class="button">Đóng</button></form>
+            <p id="thongBaoHoaDon" class="form-message" role="status"></p>
+            <div class="dialog-actions">
+                <button class="button" id="nutInPhieuThu" type="button">In phiếu thu</button>
+                <button class="button secondary" id="nutLapPhieuChi" type="button">Lập phiếu chi hoàn tiền</button>
+                <form method="dialog"><button class="button secondary">Đóng</button></form>
+            </div>
         </div>
+    </dialog>
+
+    <dialog id="hopThoaiPhieuChi">
+        <form id="formPhieuChi" class="dialog-content">
+            <div class="panel-heading">
+                <div><p class="eyebrow">HOÀN TIỀN KHÁCH HÀNG</p><h2>Lập phiếu chi</h2></div>
+                <button class="icon-button" id="dongFormPhieuChi" type="button" aria-label="Đóng phiếu chi">×</button>
+            </div>
+            <p id="thongTinDonHoanTien" class="muted"></p>
+            <div class="checkout-fields">
+                <label>Số tiền hoàn (đồng)
+                    <input id="soTienHoan" type="number" min="1" step="1" required>
+                </label>
+                <label>Lý do hoàn tiền
+                    <textarea id="lyDoHoanTien" maxlength="200" rows="3" required placeholder="Nhập lý do hoàn tiền"></textarea>
+                </label>
+            </div>
+            <p id="thongBaoPhieuChi" class="form-message" role="status"></p>
+            <div class="dialog-actions">
+                <button class="button secondary" id="huyFormPhieuChi" type="button">Hủy</button>
+                <button class="button" type="submit">Lưu và in phiếu chi</button>
+            </div>
+        </form>
     </dialog>
 
     <dialog id="hopThoaiChiTietGiaoDich" class="transaction-dialog">
@@ -392,6 +422,8 @@
             <div id="noiDungChiTietGiaoDich"></div>
             <p id="thongBaoChiTietGiaoDich" class="form-message" role="status"></p>
             <footer class="dialog-actions transaction-dialog-footer">
+                <button class="button" id="nutInChiTietGiaoDich" type="button" hidden>In phiếu thu</button>
+                <button class="button secondary" id="nutLapPhieuChiTuChiTiet" type="button" hidden>Lập phiếu chi hoàn tiền</button>
                 <form method="dialog"><button class="button secondary">Đóng</button></form>
             </footer>
         </div>

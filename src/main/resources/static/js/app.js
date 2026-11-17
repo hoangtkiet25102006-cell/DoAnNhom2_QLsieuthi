@@ -6,7 +6,9 @@ const state = {
     dongPhieuNhap: new Map(),
     sanPhamNhapKho: [],
     khachHang: [],
-    tyLeGiamVip: 10
+    tyLeGiamVip: 10,
+    hoaDonHienTai: null,
+    giaoDichHienTai: null
 };
 
 const dinhDangTien = soTien => `${Number(soTien).toLocaleString('vi-VN')} đ`;
@@ -130,7 +132,7 @@ async function taiBaoCaoThuChi() {
                 const thanh = document.createElement('span');
                 thanh.className = `chart-bar ${loaiGiaoDich === 'expense' ? 'expense' : ''}`;
                 thanh.style.height = giaTri > 0 ? `${Math.max(4, giaTri / mucLonNhat * 132)}px` : '0';
-                thanh.title = `${loaiGiaoDich === 'income' ? 'Thu' : 'Chi nhập hàng'}: ${dinhDangTien(giaTri)}`;
+                thanh.title = `${loaiGiaoDich === 'income' ? 'Thu' : 'Chi'}: ${dinhDangTien(giaTri)}`;
                 capCot.append(thanh);
             }
             const nhan = document.createElement('span');
@@ -592,6 +594,11 @@ async function moChiTietGiaoDich(loai, ma) {
     const ngayGiaoDich = document.getElementById('ngayChiTietGiaoDich');
     const noiDung = document.getElementById('noiDungChiTietGiaoDich');
     const thongBao = document.getElementById('thongBaoChiTietGiaoDich');
+    const nutInPhieuThu = document.getElementById('nutInChiTietGiaoDich');
+    const nutLapPhieuChi = document.getElementById('nutLapPhieuChiTuChiTiet');
+    state.giaoDichHienTai = null;
+    nutInPhieuThu.hidden = true;
+    nutLapPhieuChi.hidden = true;
     loaiGiaoDich.textContent = laDonHang ? 'CHI TIẾT HÓA ĐƠN' : 'CHI TIẾT PHIẾU NHẬP';
     tieuDe.textContent = `${laDonHang ? 'Hóa đơn' : 'Phiếu nhập'} #${ma}`;
     ngayGiaoDich.textContent = '';
@@ -602,8 +609,11 @@ async function moChiTietGiaoDich(loai, ma) {
     try {
         const giaoDich = await goiApi(`/api/${loai}/${ma}`);
         if (laDonHang) {
+            state.giaoDichHienTai = giaoDich;
             hienThiChiTietDonHang(giaoDich);
             ngayGiaoDich.textContent = new Date(giaoDich.thoiGianTao).toLocaleString('vi-VN');
+            nutInPhieuThu.hidden = false;
+            nutLapPhieuChi.hidden = false;
         } else {
             hienThiChiTietPhieuNhap(giaoDich);
             ngayGiaoDich.textContent = new Date(giaoDich.thoiGianNhap).toLocaleString('vi-VN');
@@ -1002,6 +1012,7 @@ async function xacNhanThanhToan() {
 }
 
 function hienThiHoaDon(hoaDon) {
+    state.hoaDonHienTai = hoaDon;
     const noiDung = document.getElementById('noiDungHoaDon');
     noiDung.replaceChildren();
     for (const [nhan, giaTri] of [
@@ -1018,6 +1029,160 @@ function hienThiHoaDon(hoaDon) {
         const dong = document.createElement('p');
         dong.textContent = `${nhan}: ${giaTri}`;
         noiDung.append(dong);
+    }
+    document.getElementById('thongBaoHoaDon').textContent = '';
+}
+
+function themDongThongTinIn(danhSach, nhan, giaTri) {
+    const dong = document.createElement('div');
+    const ten = document.createElement('dt');
+    ten.textContent = nhan;
+    const noiDung = document.createElement('dd');
+    noiDung.textContent = giaTri;
+    dong.append(ten, noiDung);
+    danhSach.append(dong);
+}
+
+function taoBangPhieuIn(matHang) {
+    if (!matHang?.length) return null;
+    const bang = document.createElement('table');
+    const dau = document.createElement('thead');
+    const dongTieuDe = document.createElement('tr');
+    for (const nhan of ['Mặt hàng', 'SL', 'Đơn giá', 'Thành tiền']) {
+        const o = document.createElement('th');
+        o.textContent = nhan;
+        dongTieuDe.append(o);
+    }
+    dau.append(dongTieuDe);
+    const than = document.createElement('tbody');
+    for (const matHangDong of matHang) {
+        const dong = document.createElement('tr');
+        const ten = document.createElement('td');
+        ten.textContent = `${matHangDong.tenHang} (${matHangDong.maSanPham})`;
+        const soLuong = document.createElement('td');
+        soLuong.textContent = `${matHangDong.soLuong} ${matHangDong.donViTinh}`;
+        const donGia = document.createElement('td');
+        donGia.textContent = dinhDangTien(matHangDong.donGia);
+        const thanhTien = document.createElement('td');
+        thanhTien.textContent = dinhDangTien(matHangDong.thanhTien);
+        dong.append(ten, soLuong, donGia, thanhTien);
+        than.append(dong);
+    }
+    bang.append(dau, than);
+    return bang;
+}
+
+function chuanBiPhieuIn(tieuDe, thongTin, matHang, cacDongTongTien) {
+    const khuVucIn = document.getElementById('printArea');
+    khuVucIn.replaceChildren();
+    const phieu = document.createElement('article');
+    phieu.className = 'print-document';
+    const tieuDeCuaHang = document.createElement('p');
+    tieuDeCuaHang.className = 'print-store-name';
+    tieuDeCuaHang.textContent = 'SIÊU THỊ';
+    const tieuDePhieu = document.createElement('h1');
+    tieuDePhieu.textContent = tieuDe;
+    phieu.append(tieuDeCuaHang, tieuDePhieu);
+
+    const danhSachThongTin = document.createElement('dl');
+    danhSachThongTin.className = 'print-meta';
+    for (const [nhan, giaTri] of thongTin) {
+        themDongThongTinIn(danhSachThongTin, nhan, giaTri);
+    }
+    phieu.append(danhSachThongTin);
+
+    const bang = taoBangPhieuIn(matHang);
+    if (bang) phieu.append(bang);
+
+    const tongKet = document.createElement('dl');
+    tongKet.className = 'print-totals';
+    for (const [nhan, giaTri] of cacDongTongTien) {
+        themDongThongTinIn(tongKet, nhan, giaTri);
+    }
+    phieu.append(tongKet);
+
+    const camOn = document.createElement('p');
+    camOn.className = 'print-thanks';
+    camOn.textContent = 'Cảm ơn quý khách và hẹn gặp lại!';
+    phieu.append(camOn);
+    khuVucIn.append(phieu);
+}
+
+async function inPhieuThu(donHang = state.hoaDonHienTai) {
+    const thongBao = document.getElementById('thongBaoHoaDon');
+    const maDonHang = typeof donHang === 'number' ? donHang : donHang?.maDonHang;
+    thongBao.className = 'form-message';
+    try {
+        const chiTiet = typeof donHang === 'object' && donHang?.matHang
+            ? donHang
+            : await goiApi(`/api/don-hang/${maDonHang}`);
+        chuanBiPhieuIn('PHIẾU THU / HÓA ĐƠN BÁN LẺ', [
+            ['Mã đơn hàng', `#${chiTiet.maDonHang}`],
+            ['Ngày lập', new Date(chiTiet.thoiGianTao).toLocaleString('vi-VN')],
+            ['Khách hàng', chiTiet.tenKhachHang],
+            ['Phương thức thanh toán', chiTiet.phuongThucThanhToan]
+        ], chiTiet.matHang, [
+            ['Tiền hàng', dinhDangTien(chiTiet.tienHang)],
+            ['Tổng giảm giá', dinhDangTien(chiTiet.giamGia)],
+            ['Khách cần trả', dinhDangTien(chiTiet.tongTien)],
+            ['Khách đã đưa', dinhDangTien(chiTiet.tienKhachDua)],
+            ['Tiền thừa', dinhDangTien(chiTiet.tienThua)]
+        ]);
+        window.print();
+        thongBao.textContent = '';
+    } catch (loi) {
+        thongBao.className = 'form-message error';
+        thongBao.textContent = `Không in được phiếu thu: ${loi.message}`;
+    }
+}
+
+function moFormPhieuChi(donHang) {
+    state.hoaDonHienTai = donHang;
+    document.getElementById('formPhieuChi').reset();
+    document.getElementById('thongTinDonHoanTien').textContent =
+        `Đơn hàng #${donHang.maDonHang} · ${donHang.tenKhachHang} · Tổng thanh toán ${dinhDangTien(donHang.tongTien)}.`;
+    const soTienHoan = document.getElementById('soTienHoan');
+    soTienHoan.max = donHang.tongTien;
+    soTienHoan.value = donHang.tongTien > 0 ? donHang.tongTien : '';
+    document.getElementById('thongBaoPhieuChi').textContent = '';
+    if (document.getElementById('hopThoaiHoaDon').open) {
+        document.getElementById('hopThoaiHoaDon').close();
+    }
+    if (document.getElementById('hopThoaiChiTietGiaoDich').open) {
+        document.getElementById('hopThoaiChiTietGiaoDich').close();
+    }
+    document.getElementById('hopThoaiPhieuChi').showModal();
+}
+
+async function luuPhieuChi(suKien) {
+    suKien.preventDefault();
+    const thongBao = document.getElementById('thongBaoPhieuChi');
+    const donHang = state.hoaDonHienTai;
+    thongBao.className = 'form-message';
+    thongBao.textContent = 'Đang lưu phiếu chi...';
+    try {
+        const phieuChi = await goiApi('/api/phieu-chi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                maDonHang: donHang.maDonHang,
+                soTien: Number(document.getElementById('soTienHoan').value),
+                lyDo: document.getElementById('lyDoHoanTien').value.trim()
+            })
+        });
+        document.getElementById('hopThoaiPhieuChi').close();
+        chuanBiPhieuIn('PHIẾU CHI HOÀN TIỀN', [
+            ['Mã phiếu chi', `#${phieuChi.maPhieuChi}`],
+            ['Mã đơn hàng', `#${phieuChi.maDonHang}`],
+            ['Ngày chi', new Date(phieuChi.ngayChi).toLocaleString('vi-VN')],
+            ['Khách hàng', phieuChi.hoTenKhach],
+            ['Lý do', phieuChi.lyDo]
+        ], [], [['Số tiền hoàn', dinhDangTien(phieuChi.soTien)]]);
+        window.print();
+        await Promise.all([taiTongQuan(), taiBaoCaoThuChi()]);
+    } catch (loi) {
+        thongBao.className = 'form-message error';
+        thongBao.textContent = `Không lưu được phiếu chi: ${loi.message}`;
     }
 }
 
@@ -1089,6 +1254,20 @@ document.getElementById('giamGia').addEventListener('input', () => capNhatThanhT
 document.getElementById('soDienThoaiThanhVien').addEventListener('input', () => capNhatThanhToan());
 document.getElementById('tienKhachDua').addEventListener('input', () => capNhatThanhToan());
 document.getElementById('xacNhanThanhToan').addEventListener('click', xacNhanThanhToan);
+document.getElementById('nutInPhieuThu').addEventListener('click', () => inPhieuThu());
+document.getElementById('nutLapPhieuChi').addEventListener('click', () => {
+    if (state.hoaDonHienTai) moFormPhieuChi(state.hoaDonHienTai);
+});
+document.getElementById('formPhieuChi').addEventListener('submit', luuPhieuChi);
+for (const id of ['dongFormPhieuChi', 'huyFormPhieuChi']) {
+    document.getElementById(id).addEventListener('click', () => document.getElementById('hopThoaiPhieuChi').close());
+}
+document.getElementById('nutInChiTietGiaoDich').addEventListener('click', () => {
+    if (state.giaoDichHienTai) inPhieuThu(state.giaoDichHienTai);
+});
+document.getElementById('nutLapPhieuChiTuChiTiet').addEventListener('click', () => {
+    if (state.giaoDichHienTai) moFormPhieuChi(state.giaoDichHienTai);
+});
 document.getElementById('tuKhoaNhapKho').addEventListener('input', taiMatHangNhapKho);
 document.getElementById('chonMatHangNhap').addEventListener('change', capNhatGiaNhapMacDinh);
 document.getElementById('themDongNhap').addEventListener('click', themDongVaoPhieuNhap);

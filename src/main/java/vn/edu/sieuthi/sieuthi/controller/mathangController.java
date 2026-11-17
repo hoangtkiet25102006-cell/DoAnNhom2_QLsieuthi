@@ -26,6 +26,8 @@ import vn.edu.sieuthi.sieuthi.ChiTietDonHang;
 import vn.edu.sieuthi.sieuthi.ChiTietPhieuNhap;
 import vn.edu.sieuthi.sieuthi.DuLieuTongQuan;
 import vn.edu.sieuthi.sieuthi.DonHangDaTao;
+import vn.edu.sieuthi.sieuthi.PhieuChiDaTao;
+import vn.edu.sieuthi.sieuthi.PhieuChiMoi;
 import vn.edu.sieuthi.sieuthi.donHangMoi;
 import vn.edu.sieuthi.sieuthi.mathang;
 import vn.edu.sieuthi.sieuthi.mathangmoi;
@@ -33,6 +35,7 @@ import vn.edu.sieuthi.sieuthi.PhieuNhapDaTao;
 import vn.edu.sieuthi.sieuthi.phieuNhapMoi;
 import vn.edu.sieuthi.sieuthi.repository.matHangRepository;
 import vn.edu.sieuthi.sieuthi.service.NhapKhoService;
+import vn.edu.sieuthi.sieuthi.service.HoanTienService;
 import vn.edu.sieuthi.sieuthi.service.ThanhToanService;
 
 @RestController 
@@ -40,15 +43,18 @@ public class mathangController {
     private final matHangRepository rePo;
     private final ThanhToanService thanhToanService;
     private final NhapKhoService nhapKhoService;
+    private final HoanTienService hoanTienService;
 
     public mathangController(
         matHangRepository rePo,
         ThanhToanService thanhToanService,
-        NhapKhoService nhapKhoService
+        NhapKhoService nhapKhoService,
+        HoanTienService hoanTienService
     ){
         this.rePo = rePo;
         this.thanhToanService = thanhToanService;
         this.nhapKhoService = nhapKhoService;
+        this.hoanTienService = hoanTienService;
     }
 
     // Controller nhận yêu cầu HTTP và chuyển việc truy cập dữ liệu cho Repository.
@@ -159,6 +165,11 @@ public class mathangController {
     @PostMapping("/api/phieu-nhap")
     public ResponseEntity<PhieuNhapDaTao> taoPhieuNhap(@RequestBody phieuNhapMoi phieuNhap) {
         return ResponseEntity.status(HttpStatus.CREATED).body(nhapKhoService.taoPhieuNhap(phieuNhap));
+    }
+
+    @PostMapping("/api/phieu-chi")
+    public ResponseEntity<PhieuChiDaTao> taoPhieuChi(@RequestBody PhieuChiMoi phieuChi) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(hoanTienService.taoPhieuChi(phieuChi));
     }
 
     @GetMapping("/api/don-hang/{maDonHang}")

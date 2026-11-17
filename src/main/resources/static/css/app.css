@@ -238,3 +238,27 @@ dialog::backdrop { background: #10271a75; }
     .transaction-dialog-content > #thongBaoChiTietGiaoDich { padding: 0 18px 4px; }
     .transaction-dialog-footer { padding: 12px 18px 16px; }
 }
+
+.print-area { display: none; }
+
+@media print {
+    @page { size: A4; margin: 15mm; }
+    body { min-width: 0; color: #17231b; background: white; }
+    body > * { display: none !important; }
+    body > #printArea { display: block !important; }
+    #printArea { color: #17231b; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+    .print-document { width: 100%; }
+    .print-store-name { margin: 0 0 5px; color: #176b4d; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+    .print-document h1 { margin: 0 0 18px; font-size: 22px; text-align: center; }
+    .print-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin: 0 0 20px; }
+    .print-meta > div, .print-totals > div { display: flex; justify-content: space-between; gap: 16px; }
+    .print-meta dt, .print-totals dt { color: #58665c; }
+    .print-meta dd, .print-totals dd { margin: 0; text-align: right; }
+    .print-document table { margin: 14px 0 18px; }
+    .print-document th, .print-document td { padding: 8px 6px; border-bottom: 1px solid #d5ddd7; white-space: normal; }
+    .print-document th { color: #425148; }
+    .print-document td:not(:first-child), .print-document th:not(:first-child) { text-align: right; }
+    .print-totals { display: grid; gap: 8px; width: min(100%, 360px); margin: 0 0 0 auto; }
+    .print-totals > div:last-child { padding-top: 8px; border-top: 1px solid #aebbb1; color: #176b4d; font-weight: 700; }
+    .print-thanks { margin-top: 36px; text-align: center; }
+}

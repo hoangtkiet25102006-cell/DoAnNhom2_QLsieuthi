@@ -235,6 +235,13 @@ public class matHangRepository {
               AND thoi_gian_nhap < CURRENT_DATE + INTERVAL '1 day'
             """, Long.class);
 
+        var chiHoanTienHomNay = jdbc.queryForObject("""
+            SELECT COALESCE(SUM(so_tien), 0)
+            FROM phieu_chi
+            WHERE ngay_chi >= CURRENT_DATE
+              AND ngay_chi < CURRENT_DATE + INTERVAL '1 day'
+            """, Long.class);
+
         List<DuLieuTongQuan.ThuChiTheoNgay> doanhThuTuan = jdbc.query("""
             SELECT ngay::date AS ngay,
                 COALESCE((
@@ -248,13 +255,20 @@ public class matHangRepository {
                     FROM phieu_nhap
                     WHERE phieu_nhap.thoi_gian_nhap >= ngay
                       AND phieu_nhap.thoi_gian_nhap < ngay + INTERVAL '1 day'
-                ), 0) AS chi_phi_nhap
+                ), 0) AS chi_phi_nhap,
+                COALESCE((
+                    SELECT SUM(phieu_chi.so_tien)
+                    FROM phieu_chi
+                    WHERE phieu_chi.ngay_chi >= ngay
+                      AND phieu_chi.ngay_chi < ngay + INTERVAL '1 day'
+                ), 0) AS chi_hoan_tien
             FROM generate_series(CURRENT_DATE - 6, CURRENT_DATE, INTERVAL '1 day') AS cac_ngay(ngay)
             ORDER BY ngay
             """, (rs, row) -> new DuLieuTongQuan.ThuChiTheoNgay(
                 rs.getDate("ngay").toLocalDate(),
                 rs.getLong("doanh_thu"),
-                rs.getLong("chi_phi_nhap")
+                rs.getLong("chi_phi_nhap"),
+                rs.getLong("chi_hoan_tien")
             ));
 
         List<DuLieuTongQuan.PhieuNhapGanDay> phieuNhapGanDay = jdbc.query("""
@@ -289,7 +303,8 @@ public class matHangRepository {
             ((Number) giaoDichHomNay.get("doanh_thu")).longValue(),
             chiPhiNhapHomNay == null ? 0 : chiPhiNhapHomNay,
             ((Number) giaoDichHomNay.get("doanh_thu")).longValue()
-                - (chiPhiNhapHomNay == null ? 0 : chiPhiNhapHomNay),
+                - (chiPhiNhapHomNay == null ? 0 : chiPhiNhapHomNay)
+                - (chiHoanTienHomNay == null ? 0 : chiHoanTienHomNay),
             ((Number) giaoDichHomNay.get("so_don")).intValue(),
             doanhThuTuan,
             phieuNhapGanDay,
@@ -301,21 +316,25 @@ public class matHangRepository {
         String taoCacKy;
         String gomTheoKyDonHang;
         String gomTheoKyPhieuNhap;
+        String gomTheoKyPhieuChi;
         switch (loai) {
             case "ngay" -> {
                 taoCacKy = "generate_series(?::date, ?::date - 1, INTERVAL '1 day')::date";
                 gomTheoKyDonHang = "thoi_gian_tao::date";
                 gomTheoKyPhieuNhap = "thoi_gian_nhap::date";
+                gomTheoKyPhieuChi = "ngay_chi::date";
             }
             case "thang" -> {
                 taoCacKy = "generate_series(date_trunc('month', ?::date), date_trunc('month', (?::date - 1)), INTERVAL '1 month')::date";
                 gomTheoKyDonHang = "date_trunc('month', thoi_gian_tao)::date";
                 gomTheoKyPhieuNhap = "date_trunc('month', thoi_gian_nhap)::date";
+                gomTheoKyPhieuChi = "date_trunc('month', ngay_chi)::date";
             }
             case "nam" -> {
                 taoCacKy = "generate_series(date_trunc('year', ?::date), date_trunc('year', (?::date - 1)), INTERVAL '1 year')::date";
                 gomTheoKyDonHang = "date_trunc('year', thoi_gian_tao)::date";
                 gomTheoKyPhieuNhap = "date_trunc('year', thoi_gian_nhap)::date";
+                gomTheoKyPhieuChi = "date_trunc('year', ngay_chi)::date";
             }
             default -> throw new IllegalArgumentException("Loại báo cáo không hợp lệ.");
         }
@@ -329,20 +348,27 @@ public class matHangRepository {
                 WHERE thoi_gian_tao >= ? AND thoi_gian_tao < ?
                 GROUP BY 1
             ),
-            chi_phi AS (
+            chi_phi_nhap AS (
                 SELECT %s AS ky, SUM(tong_tien) AS tong
                 FROM phieu_nhap
                 WHERE thoi_gian_nhap >= ? AND thoi_gian_nhap < ?
                 GROUP BY 1
+            ),
+            chi_hoan_tien AS (
+                SELECT %s AS ky, SUM(so_tien) AS tong
+                FROM phieu_chi
+                WHERE ngay_chi >= ? AND ngay_chi < ?
+                GROUP BY 1
             )
             SELECT cac_ky.ky,
                 COALESCE(doanh_thu.tong, 0) AS thu,
-                COALESCE(chi_phi.tong, 0) AS chi
+                COALESCE(chi_phi_nhap.tong, 0) + COALESCE(chi_hoan_tien.tong, 0) AS chi
             FROM cac_ky
             LEFT JOIN doanh_thu USING (ky)
-            LEFT JOIN chi_phi USING (ky)
+            LEFT JOIN chi_phi_nhap USING (ky)
+            LEFT JOIN chi_hoan_tien USING (ky)
             ORDER BY cac_ky.ky
-            """.formatted(taoCacKy, gomTheoKyDonHang, gomTheoKyPhieuNhap),
+            """.formatted(taoCacKy, gomTheoKyDonHang, gomTheoKyPhieuNhap, gomTheoKyPhieuChi),
             (rs, row) -> {
                 long thu = rs.getLong("thu");
                 long chi = rs.getLong("chi");
@@ -353,6 +379,8 @@ public class matHangRepository {
                     thu - chi
                 );
             },
+            tuNgay,
+            denNgay,
             tuNgay,
             denNgay,
             tuNgay,
